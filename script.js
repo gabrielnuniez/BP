@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let fechaSeleccionada = "";
     let indiceEdicion = -1;
     let chartInstance = null;
-    let clientesAgrupados = []; // Variable global para el CRM
+    let clientesAgrupados = []; 
 
     let configBanner = JSON.parse(localStorage.getItem('pelu_config_v2')) || {
         titulo: "Beauty Palace",
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const contenedor = document.getElementById('calendar');
     const displayMes = document.getElementById('monthYear');
 
-    // --- 1. MICRO-INTERACCIONES (Efecto Ripple de Google) ---
+    // --- 1. MICRO-INTERACCIONES (Efecto Ripple) ---
     function createRipple(event) {
         const button = event.currentTarget;
         const circle = document.createElement("span");
@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
         button.appendChild(circle);
     }
 
-    // Aplicar ripple a todos los botones interactivos
     document.querySelectorAll('.m3-btn-filled, .m3-btn-text, .m3-btn-fab-extended, .rail-item, .m3-nav-item, .m3-card-interactive').forEach(btn => {
         btn.addEventListener('click', createRipple);
     });
@@ -92,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- 3. RENDERIZADO DEL CALENDARIO (Con Skeleton) ---
+    // --- 3. RENDERIZADO DEL CALENDARIO ---
     window.renderizar = () => {
         const skeleton = document.getElementById('calendar-skeleton');
         const calCard = document.querySelector('.m3-calendar-card');
@@ -140,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 contenedor.appendChild(diaDiv);
             }
             actualizarEconomia();
-            renderizarListaClientes(); // Actualiza el CRM en segundo plano
+            renderizarListaClientes(); 
         }, 400); 
     };
 
@@ -179,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(`vista-${vistaId}`).classList.remove('oculta');
         document.getElementById(`vista-${vistaId}`).classList.add('activa');
 
-        // Sincronizar Nav Rail y Bottom Bar
         document.querySelectorAll('.rail-item, .m3-nav-item').forEach(nav => {
             if (nav.getAttribute('onclick').includes(vistaId)) {
                 nav.classList.add('active');
@@ -194,18 +192,17 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (vistaId === 'clientes') renderizarListaClientes();
     };
 
-    // --- NUEVO: 6. LÓGICA DEL CRM (CLIENTES) ---
+    // --- 6. LÓGICA DEL CRM (CLIENTES) ---
     function procesarDatosCRM() {
         const ingresos = registros.filter(r => r.tipo === 'ingreso');
         const mapaClientes = new Map();
 
         ingresos.forEach(turno => {
-            // Dividir el título para sacar el nombre (asume formato "Nombre - Servicio")
             let nombreCliente = turno.titulo.split('-')[0].trim();
             let servicio = turno.titulo.split('-')[1]?.trim() || 'Servicio General';
             let clave = turno.telefono ? turno.telefono.replace(/\D/g, '') : nombreCliente.toLowerCase();
             
-            if(!clave) return; // Si no hay ni nombre ni teléfono, ignorar
+            if(!clave) return;
 
             if (!mapaClientes.has(clave)) {
                 mapaClientes.set(clave, {
@@ -218,19 +215,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let cliente = mapaClientes.get(clave);
             cliente.totalGastado += Number(turno.monto);
-            // Guardar el servicio real detectado
             let turnoConServicio = {...turno, servicioReal: servicio};
             cliente.turnos.push(turnoConServicio);
         });
 
-        // Convertir mapa a array y ordenar los turnos de cada cliente (del más nuevo al más viejo)
         clientesAgrupados = Array.from(mapaClientes.values()).map(c => {
             c.turnos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
             c.ultimaVisita = c.turnos[0].fecha;
             return c;
         });
         
-        // Ordenar clientes por última visita
         clientesAgrupados.sort((a, b) => new Date(b.ultimaVisita) - new Date(a.ultimaVisita));
     }
 
@@ -261,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'm3-card-list-item'; 
             
-            // Formato de fecha
             const f = c.ultimaVisita.split('-');
             const fechaFormateada = `${f[2]}/${f[1]}/${f[0]}`;
 
@@ -284,7 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="material-symbols-rounded" style="color:var(--m3-on-surface-variant);">chevron_right</span>
                 </div>
             `;
-            // Al hacer clic, abre el modal con el detalle
             card.onclick = () => window.abrirModalCliente(index, filtrados);
             lista.appendChild(card);
         });
@@ -329,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.cerrarModalCliente = () => document.getElementById('modalCliente').style.display = 'none';
 
-    // --- 7. VISTA HOY (TARJETAS M3) ---
+    // --- 7. VISTA HOY ---
     function renderizarVistaHoy() {
         const strHoy = `${hoyReal.getFullYear()}-${String(hoyReal.getMonth() + 1).padStart(2, '0')}-${String(hoyReal.getDate()).padStart(2, '0')}`;
         fechaSeleccionada = strHoy; 
@@ -380,29 +372,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 8. LÓGICA DE MODALES DE REGISTRO (CON SERVICIOS) ---
     
-    // Toggle para esconder Servicios si es un gasto
+    // Toggle para esconder Servicios si es un gasto y cambiar el Título dinámicamente
     window.toggleFormularioTipo = () => {
         const esGasto = document.querySelector('input[name="tipoRegistro"][value="gasto"]').checked;
         const campoServicios = document.getElementById('campoServicios');
         const campoTelefono = document.getElementById('campoTelefono');
+        const tituloModal = document.getElementById('modalTitle');
         
         if (esGasto) {
             campoServicios.style.display = 'none';
             campoTelefono.style.display = 'none';
-            document.getElementById('selectServicio').value = ""; // Limpiar
+            document.getElementById('selectServicio').value = ""; 
+            
+            // CORRECCIÓN 1: Título dinámico para Gasto
+            tituloModal.innerText = indiceEdicion > -1 ? "Editar Gasto" : "Nuevo Gasto";
         } else {
             campoServicios.style.display = 'block';
             campoTelefono.style.display = 'block';
+            
+            // CORRECCIÓN 1: Título dinámico para Cita
+            tituloModal.innerText = indiceEdicion > -1 ? "Editar Cita" : "Nueva Cita";
         }
     };
 
-    // Agregar nombre de servicio al título
     window.actualizarMontoSugerido = () => {
         const servicioSeleccionado = document.getElementById('selectServicio').value;
         const inputNombre = document.getElementById('nombreCliente');
         
         if (servicioSeleccionado !== "") {
-            // Si el nombre ya tiene un guion, reemplazamos la parte del servicio
             if (inputNombre.value.includes('-')) {
                 let soloNombre = inputNombre.value.split('-')[0].trim();
                 inputNombre.value = `${soloNombre} - ${servicioSeleccionado}`;
@@ -436,7 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fechaSeleccionada = `${hoyReal.getFullYear()}-${String(hoyReal.getMonth() + 1).padStart(2, '0')}-${String(hoyReal.getDate()).padStart(2, '0')}`;
         }
         indiceEdicion = -1;
-        document.getElementById('modalTitle').innerText = "Nueva Cita";
         document.getElementById('nombreCliente').value = "";
         document.getElementById('telefonoCliente').value = "";
         document.getElementById('montoTurno').value = "";
@@ -444,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('selectServicio').value = "";
         
         document.querySelector('input[name="tipoRegistro"][value="ingreso"]').checked = true;
-        window.toggleFormularioTipo(); // Resetear vista
+        window.toggleFormularioTipo(); 
         
         document.getElementById('btnBorrar').style.display = "none";
         document.getElementById('modalTurno').style.display = 'flex';
@@ -454,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.cerrarModalDia();
         const r = registros[idx];
         indiceEdicion = idx;
-        document.getElementById('modalTitle').innerText = "Editar Cita";
         document.getElementById('nombreCliente').value = r.titulo;
         document.getElementById('telefonoCliente').value = r.telefono || "";
         document.getElementById('horaTurno').value = r.hora || "";
@@ -463,11 +458,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         window.toggleFormularioTipo();
 
-        // Intentar autoseleccionar el servicio si existe en el título
         if (r.tipo === 'ingreso' && r.titulo.includes('-')) {
             let srv = r.titulo.split('-')[1].trim();
             let select = document.getElementById('selectServicio');
-            // Chequear si el servicio existe en las opciones
             let existe = Array.from(select.options).some(opt => opt.value === srv);
             if (existe) select.value = srv;
             else select.value = "";
@@ -519,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(!document.getElementById('vista-clientes').classList.contains('oculta')) renderizarListaClientes();
         
         actualizarEconomia();
+        actualizarBannerInfo(); // CORRECCIÓN 2: Refresca el contador de turnos de hoy
     };
 
     document.getElementById('btnBorrar').onclick = () => {
@@ -526,10 +520,13 @@ document.addEventListener('DOMContentLoaded', () => {
             registros.splice(indiceEdicion, 1);
             localStorage.setItem('pelu_datos_v6', JSON.stringify(registros));
             window.cerrarModal();
+            
             if(!document.getElementById('vista-calendario').classList.contains('oculta')) renderizar();
             if(!document.getElementById('vista-hoy').classList.contains('oculta')) renderizarVistaHoy();
             if(!document.getElementById('vista-clientes').classList.contains('oculta')) renderizarListaClientes();
+            
             actualizarEconomia();
+            actualizarBannerInfo(); // CORRECCIÓN 2: Refresca el contador de turnos de hoy
         }
     };
 
